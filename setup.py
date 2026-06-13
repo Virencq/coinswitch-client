@@ -14,7 +14,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/Virencq/coinswitch-client',
-    author='Virencq',
+    author='Virender Kumar',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
