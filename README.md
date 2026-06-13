@@ -66,6 +66,20 @@ c.update_leverage('BTCUSDT', 5)
 c.add_margin('BTCUSDT', 100)
 ```
 
+### Stop-loss & take-profit
+
+```python
+# Stop-loss SELL (close long when price drops to trigger)
+c.stop_order('btc', 'usdt', quantity_from=0.001, side='SELL',
+             order_type='STOP_MARKET', trigger_price=50000)
+
+# Take-profit SELL (close long when price rises to trigger)
+c.stop_order('btc', 'usdt', quantity_from=0.001, side='SELL',
+             order_type='TAKE_PROFIT_MARKET', trigger_price=70000)
+
+# reduce_only=True by default — pass reduce_only=False to open new positions
+```
+
 ### TransactionManager
 
 ```python
@@ -92,8 +106,10 @@ Targets the Futures surface at `https://coinswitch.co/trade/api/v2/futures`.
 | `get_transactions()` | `GET /transactions?exchange=EXCHANGE_2` |
 | `update_leverage()` | `POST /leverage` |
 | `add_margin()` | `POST /margin` |
+| `stop_order()` | `POST /order` (with trigger_price, reduce_only) |
 
 - Symbol format: `BTCUSDT` (no slash)
 - Side: `BUY` / `SELL`
-- Order type: `MARKET` / `LIMIT`
+- Order type: `MARKET` / `LIMIT` / `STOP_MARKET` / `TAKE_PROFIT_MARKET`
 - Exchange: `EXCHANGE_2`
+- Stop orders require `trigger_price` (float) and `reduce_only` (bool)
