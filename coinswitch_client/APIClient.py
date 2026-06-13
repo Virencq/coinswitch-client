@@ -211,6 +211,34 @@ class CoinSwitchV2FixedClient(CoinSwitchClient):
         }
         return self._request("POST", "/margin", data=data)
 
+    def stop_order(self, from_coin: str, to_coin: str,
+                   quantity_from: float = None, quantity_to: float = None,
+                   order_type: str = "STOP_MARKET",
+                   trigger_price: float = None,
+                   reduce_only: bool = True,
+                   **kwargs):
+        if quantity_from is not None and quantity_to is not None:
+            raise ValueError('Specify one of quantity_from OR quantity_to')
+        if trigger_price is None:
+            raise ValueError('trigger_price is required for stop/tp orders')
+        symbol = kwargs.get('symbol', _to_futures_symbol(from_coin, to_coin))
+        side = kwargs.get('side', 'SELL')
+        data = {
+            "symbol": symbol,
+            "side": side,
+            "order_type": order_type,
+            "quantity": quantity_from if quantity_from is not None else quantity_to,
+            "exchange": kwargs.get('exchange', "EXCHANGE_2"),
+            "trigger_price": trigger_price,
+            "reduce_only": reduce_only,
+        }
+        r = self._request("POST", "/order", data=data)
+        if r.is_success():
+            order_data = r.data()
+            order_data['offerReferenceId'] = order_data.get('orderId')
+            return ApiResponseV2(json_response={"success": True, "data": order_data})
+        return r
+
 
 class CoinSwitchV2InstantClient(CoinSwitchClient):
     def __init__(self, api_key="", secret_key="", ip="1.1.1.1"):
@@ -278,6 +306,34 @@ class CoinSwitchV2InstantClient(CoinSwitchClient):
 
     def get_transactions(self):
         return self._request("GET", "/transactions", params={"exchange": "EXCHANGE_2"})
+
+    def stop_order(self, from_coin: str, to_coin: str,
+                   quantity_from: float = None, quantity_to: float = None,
+                   order_type: str = "STOP_MARKET",
+                   trigger_price: float = None,
+                   reduce_only: bool = True,
+                   **kwargs):
+        if quantity_from is not None and quantity_to is not None:
+            raise ValueError('Specify one of quantity_from OR quantity_to')
+        if trigger_price is None:
+            raise ValueError('trigger_price is required for stop/tp orders')
+        symbol = kwargs.get('symbol', _to_futures_symbol(from_coin, to_coin))
+        side = kwargs.get('side', 'SELL')
+        data = {
+            "symbol": symbol,
+            "side": side,
+            "order_type": order_type,
+            "quantity": quantity_from if quantity_from is not None else quantity_to,
+            "exchange": kwargs.get('exchange', "EXCHANGE_2"),
+            "trigger_price": trigger_price,
+            "reduce_only": reduce_only,
+        }
+        r = self._request("POST", "/order", data=data)
+        if r.is_success():
+            order_data = r.data()
+            order_data['orderId'] = order_data.get('orderId')
+            return ApiResponseV2(json_response={"success": True, "data": order_data})
+        return r
 
     def get_positions(self, symbol: str = None):
         params = {"exchange": "EXCHANGE_2"}
