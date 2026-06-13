@@ -6,18 +6,6 @@ import requests
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 
-class Address:
-    address = ""
-    flag = ""
-
-    def __init__(self, address: str, flag=""):
-        self.address = address
-        self.flag = flag
-
-    def json(self):
-        return self.__dict__
-
-
 class ApiResponse:
     source_data = None
 
@@ -119,90 +107,6 @@ class CoinSwitchClient:
     def v2_instant(cls, api_key="", secret_key="", ip="1.1.1.1"):
         return CoinSwitchV2InstantClient(api_key=api_key, secret_key=secret_key, ip=ip)
 
-    @classmethod
-    def v1(cls, api_key="", secret_key="", ip="1.1.1.1"):
-        return CoinSwitchV1Client(api_key=api_key, secret_key=secret_key, ip=ip)
-
-
-class CoinSwitchV1Client(CoinSwitchClient):
-    def __init__(self, api_key="", secret_key="", ip="1.1.1.1"):
-        super().__init__(api_key=api_key, secret_key=secret_key, ip=ip)
-
-    def coins(self):
-        return self._spot_request("GET", "/coins", params={"exchange": "c2c1"})
-
-    def from_coin(self, coin: str):
-        r = self.coins()
-        if r.is_success():
-            data = r.data()
-            pairs = []
-            for exchange, symbols in data.items():
-                for sym in symbols:
-                    if sym.lower().startswith(coin.lower()):
-                        pairs.append(sym)
-            return ApiResponseV2(json_response={"success": True, "data": pairs})
-        return r
-
-    def to_coin(self, coin: str):
-        r = self.coins()
-        if r.is_success():
-            data = r.data()
-            pairs = []
-            for exchange, symbols in data.items():
-                for sym in symbols:
-                    if "/" in sym and sym.split("/")[1].lower() == coin.lower():
-                        pairs.append(sym)
-            return ApiResponseV2(json_response={"success": True, "data": pairs})
-        return r
-
-    def retrieve_limit_for(self, from_coin: str, to_coin: str):
-        return self._request("GET", "/ticker", params={
-            "symbol": _to_futures_symbol(from_coin, to_coin),
-            "exchange": "EXCHANGE_2",
-        })
-
-    def place_offer_for(self, from_coin: str, to_coin: str, quantity: float, **kwargs):
-        symbol = kwargs.get('symbol', _to_futures_symbol(from_coin, to_coin))
-        side = kwargs.get('side', 'BUY')
-        price = kwargs.get('price')
-        data = {
-            "symbol": symbol,
-            "side": side,
-            "order_type": "LIMIT" if price else "MARKET",
-            "quantity": quantity,
-            "exchange": kwargs.get('exchange', "EXCHANGE_2"),
-        }
-        if price:
-            data["price"] = price
-        r = self._request("POST", "/order", data=data)
-        if r.is_success():
-            order_data = r.data()
-            order_data['offerReferenceId'] = order_data.get('orderId')
-            return ApiResponseV2(json_response={"success": True, "data": order_data})
-        return r
-
-    def place_order_for(self, from_coin: str, to_coin: str, quantity: float,
-                        offer_id: str, user_id: str,
-                        to_adress=None, refund_address=None, **kwargs):
-        symbol = kwargs.get('symbol', _to_futures_symbol(from_coin, to_coin))
-        side = kwargs.get('side', 'BUY')
-        data = {
-            "symbol": symbol,
-            "side": side,
-            "order_type": "MARKET",
-            "quantity": quantity,
-            "exchange": kwargs.get('exchange', "EXCHANGE_2"),
-        }
-        r = self._request("POST", "/order", data=data)
-        if r.is_success():
-            order_data = r.data()
-            order_data['orderId'] = order_data.get('orderId')
-            return ApiResponseV2(json_response={"success": True, "data": order_data})
-        return r
-
-    def order_status(self, order_id: str):
-        return self._request("GET", "/order", params={"order_id": order_id})
-
 
 class CoinSwitchV2FixedClient(CoinSwitchClient):
     def __init__(self, api_key="", secret_key="", ip="1.1.1.1"):
@@ -261,8 +165,7 @@ class CoinSwitchV2FixedClient(CoinSwitchClient):
             return ApiResponseV2(json_response={"success": True, "data": order_data})
         return r
 
-    def order(self, from_coin: str, to_coin: str, offer_id: str,
-              to_address=None, refund_adress=None,
+    def order(self, from_coin: str, to_coin: str,
               quantity_from: float = None, quantity_to: float = None,
               **kwargs):
         if quantity_from is not None and quantity_to is not None:
@@ -347,7 +250,6 @@ class CoinSwitchV2InstantClient(CoinSwitchClient):
         })
 
     def order(self, from_coin: str, to_coin: str,
-              to_address=None, refund_adress=None,
               quantity_from: float = None, quantity_to: float = None,
               **kwargs):
         if quantity_from is not None and quantity_to is not None:
@@ -368,9 +270,6 @@ class CoinSwitchV2InstantClient(CoinSwitchClient):
             return ApiResponseV2(json_response={"success": True, "data": order_data})
         return r
 
-    def orders(self):
-        return self._request("GET", "/positions", params={"exchange": "EXCHANGE_2"})
-
     def order_status(self, order_id: str):
         return self._request("GET", "/order", params={"order_id": order_id})
 
@@ -379,3 +278,9 @@ class CoinSwitchV2InstantClient(CoinSwitchClient):
 
     def get_transactions(self):
         return self._request("GET", "/transactions", params={"exchange": "EXCHANGE_2"})
+
+    def get_positions(self, symbol: str = None):
+        params = {"exchange": "EXCHANGE_2"}
+        if symbol:
+            params["symbol"] = symbol
+        return self._request("GET", "/positions", params=params)
